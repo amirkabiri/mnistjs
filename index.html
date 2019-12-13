@@ -1,21 +1,30 @@
-<style>
-	body{
-	    -webkit-touch-callout: none;
-		-webkit-user-select: none;
-		-khtml-user-select: none;
-		-moz-user-select: none;
-		-ms-user-select: none;
-		user-select: none;
-
-		display:flex;
-		justify-content:center;
-		align-items:center;
-	}
-</style>
+<html>
+<head>
+	<style>
+		body{
+			display:flex;
+			justify-content:center;
+			align-items:center;
+			margin:0;
+			flex-direction:column;
+		}
+		
+		*{touch-action: none;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+		}
+	</style>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
 <body>
-
+	<div id="result">Loading Model ...</div>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.0/dist/tf.min.js"></script>
 <script>
+try{
 	window.log = (...q) => console.log(...q);
 	function createCanvas(width = 320, height = 160){
 		const canvas = document.createElement('canvas');
@@ -41,8 +50,22 @@
 			setTimeout(resolve, time);
 		});
 	}
-	function mouseDown({ x, y }){
+	function getXandY(e){
+		let x, y;
+	    if(e.type == 'touchstart' || e.type == 'touchmove' || e.type == 'touchend' || e.type == 'touchcancel'){
+			let touch = e.touches[0] || e.changedTouches[0];
+			x = touch.pageX;
+			y = touch.pageY;
+		} else if (e.type == 'mousedown' || e.type == 'mouseup' || e.type == 'mousemove' || e.type == 'mouseover'|| e.type=='mouseout' || e.type=='mouseenter' || e.type=='mouseleave') {
+			x = e.clientX;
+			y = e.clientY;
+		}
+		return [x,y];
+	}
+	function mouseDown(e){
 		drawing = true;
+		
+		const [x, y] = getXandY(e);
 		
 		const dx = x - canvasRect.x;
 		const dy = y - canvasRect.y;
@@ -50,8 +73,10 @@
 		context.beginPath();
 		context.moveTo(dx, dy);
 	}
-	function mouseMove({ x, y }){
+	function mouseMove(e){
 		if(!drawing) return;
+	
+		const [x, y] = getXandY(e);
 	
 		const dx = x - canvasRect.x;
 		const dy = y - canvasRect.y;
@@ -89,6 +114,8 @@
 
 		log(result, max);
 		
+		document.getElementById('result').innerHTML = `result : ${ result }  confidence : ${ max.toFixed(2) * 100 }%`;
+		
 		await sleep(100);
 		context.clearRect(0, 0, canvas.width, canvas.height);
 	}
@@ -99,7 +126,9 @@
 	}
 	
 	let drawing = false;
-	const { canvas, context } = createCanvas(400, 400);
+	const size = innerWidth > innerHeight ? innerHeight : innerWidth ;
+	const { canvas, context } = createCanvas(size, size);
+
 	document.body.appendChild(canvas);
 	context.strokeStyle = 'red';
 	context.lineWidth = 20;
@@ -113,16 +142,23 @@
 	window.onmouseup = mouseUp;
 	canvas.onmousemove = mouseMove;
 	
-	canvas.ontouchstart = mouseDown;
-	canvas.ontouchend = mouseMove;
-	canvas.ontouchmove = mouseMove;
+	canvas.addEventListener('touchstart', mouseDown);
+	canvas.addEventListener('touchend', mouseUp);
+	canvas.addEventListener('touchmove', mouseMove);
 
 	(async function(){
 		model = await tf.loadLayersModel('model.json');
 		log(model)
 		
 		canvas.style.background = '#ddd';
+		
+		document.getElementById('result').innerHTML = 'model loaded';
 	})();
+	
+}catch(e){
+	document.write(e);
+}
 </script>
 
 </body>
+</html>
